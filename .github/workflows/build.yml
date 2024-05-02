@@ -29,6 +29,6 @@ jobs:
           # Collect VCS details from git and add them to the build
           jf rt bag
           # Xray Scan
-          # jf bs
+          jf bs
           # Publish build info
           jf rt bp
