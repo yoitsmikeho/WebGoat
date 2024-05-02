@@ -1,4 +1,4 @@
-name: "JFrog CLI Example"
+name: "JFrog Webgoat CLI Example"
 on: push
 
 jobs:
@@ -28,5 +28,7 @@ jobs:
           jf rt bce
           # Collect VCS details from git and add them to the build
           jf rt bag
+          # Xray Scan
+          jf bs
           # Publish build info
           jf rt bp
