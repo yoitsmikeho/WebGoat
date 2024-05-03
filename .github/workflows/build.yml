@@ -49,7 +49,7 @@ jobs:
     - if: always()
       name: Build & Deploy
       run: | 
-        cd maths && jf mvn clean install
+        jf mvn clean install
         
     - if: always() 
       name: Publish Build Information
