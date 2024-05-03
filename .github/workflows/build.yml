@@ -26,10 +26,8 @@ jobs:
           distribution: 'temurin'
           java-version: 8
 
-      - name: Set Environment Variables
-        run: |
-          echo "::set-env name=repository::$(echo ${GITHUB_REF#refs/heads/} | sed 's/\//_/g')"
-          echo $repository
+      - name: Build & Deploy
+        run: jf mvn clean install
 
       - name: Run JFrog CLI
         run: |
