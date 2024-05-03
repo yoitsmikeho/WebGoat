@@ -1,95 +1,32 @@
+name: "JFrog CLI Example"
+on: push
 
-name: calculate-ci-job
-on:  
-  push:
-    branches-ignore: [ master ]
-  pull_request:   
-    branches-ignore: [ master ]
-  schedule: 
-    - cron:  '0 1 * * *'
-       
-jobs: 
-  build-jdk8:
-    runs-on: ${{ matrix.os }}
-    strategy:
-     max-parallel: 3
-     fail-fast: false
-     #GitHub-hosted runners, possible to add: windows-latest
-     matrix:
-       os: [ubuntu-latest]
-          
-    name: calculate-ci-job
+jobs:
+  build:
+    runs-on: ubuntu-latest
     steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-         
-    - name: Setup JDK 1.8
-      uses: actions/setup-java@v4
-      with:
-        distribution: 'temurin'
-        java-version: 8
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup JFrog CLI
+        uses: jfrog/setup-jfrog-cli@v4
+        env:
+          # JFrog platform url (for example: https://acme.jfrog.io)
+          JF_URL: ${{ secrets.JF_URL }}
 
-    - name: Setup JFrog CLI
-      uses: jfrog/setup-jfrog-cli@v4
-      env:
-        # JFrog platform url (for example: https://acme.jfrog.io)
-        JF_URL: ${{ secrets.JF_URL }}
+          # JFrog Platform access token
+          JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
 
-        # JFrog Platform access token
-        JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
-        
-    - name: Ping Artifactory
-      run: jf rt ping
+          # Basic authentication credentials
+          ## JF_USER: ${{ secrets.JF_USER }}
+          ## JF_PASSWORD: ${{ secrets.JF_PASSWORD }}
 
-    - if: always()   
-      name: Feature Branch Repository Update
-      run: |
-        jf mvnc --repo-resolve-releases=dev-webgoat-libs-release --repo-resolve-snapshots=dev-webgoat-libs-snapshot --repo-deploy-releases=dev-webgoat-libs-release --repo-deploy-snapshots=dev-webgoat-libs-snapshot
-     
-    - if: always()
-      name: Build & Deploy
-      run: | 
-        jf mvn clean install -B "-DJF_ACCESS_TOKEN=${{ secrets.JF_ACCESS_TOKEN }}"
-        
-    - if: always() 
-      name: Publish Build Information
-      run: |
-        # Collect environment variables for the build
-        jf rt bce
-        # Collect VCS details from git and add them to the build
-        jf rt bag
-        # Publish build info
-        jf rt bp       
-        
-    - if: always()
-      name: Xray Scan
-      run: |
-        jf bs
-
-    - if: always()
-      name: Feature Branch Repository Deletion
-      env:
-        NUMBER_OF_DAYS_TO_KEEP: 90
-      run: |
-        # Extract all the LOCAL repositories created automatically by the CI process
-        jf rt curl -XGET /api/repositories | jq '[.[] | .key | select(test("auto-cli-local"))]' > deletion/auto_created_repositories.json && cat deletion/auto_created_repositories.json
-
-        # Calculate for which month are we going back to verify who should be deleted
-        jq -n 'now - 3600 * 24 * '$NUMBER_OF_DAYS_TO_KEEP' | gmtime | todate' > deletion/months_indicator && cat deletion/months_indicator
-
-        # Iterate over all the repositories, delete those by the latest file that was modified
-        jq -c '.[]' deletion/auto_created_repositories.json | while read i; do
-          echo Iterating repository = $i
-          sh -c "jf rt s --spec deletion/repositories-spec.json --spec-vars='key1="$i"' > deletion/search_results && cat deletion/search_results"
-          
-          # If the repository is empty / latest modified file is older > NUMBER_OF_DAYS_TO_KEEP days => DELETE the repository
-          if [[ $(cat deletion/search_results) == "[]" ]]; then
-             echo "Deleting repository: $i, repository is empty"
-             sh -c "jf rt rdel $i --quiet && jf rt rdel ${i//local/virtual} --quiet && jf rt rdel ${i//local/jcenter} --quiet"
-          elif [[ $(cat deletion/search_results | jq --arg month_indicator $(cat deletion/months_indicator) '.[] | .modified | . <= $month_indicator') = "true" ]]; then             
-             echo "Deleting repository: $i, too old to keep in Artifactory"
-             sh -c "jf rt rdel $i --quiet && jf rt rdel ${i//local/virtual} --quiet && jf rt rdel ${i//local/jcenter} --quiet"
-          else
-             echo "Skipping Repository deletion - repository is still relevant"
-          fi
-        done        
+      - name: Run JFrog CLI
+        run: |
+          # Ping the server
+          jf rt ping
+          # Collect environment variables for the build
+          jf rt bce
+          # Collect VCS details from git and add them to the build
+          jf rt bag
+          # Publish build info
+          jf rt bp
