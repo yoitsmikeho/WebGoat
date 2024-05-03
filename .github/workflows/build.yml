@@ -1,65 +1,97 @@
-name: "JFrog Webgoat CLI Example"
-on: push
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
+name: calculate-ci-job
+on:  
+  push:
+    branches-ignore: [ master ]
+  pull_request:   
+    branches-ignore: [ master ]
+  schedule: 
+    - cron:  '0 1 * * *'
+       
+jobs: 
+  build-jdk8:
+    runs-on: ${{ matrix.os }}
+    strategy:
+     max-parallel: 3
+     fail-fast: false
+     #GitHub-hosted runners, possible to add: windows-latest
+     matrix:
+       os: [ubuntu-latest]
+          
+    name: calculate-ci-job
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+    - name: Checkout
+      uses: actions/checkout@v4
+         
+    - name: Setup JDK 1.8
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: 8
 
-      - name: Get branch name
-        id: branch-name
-        uses: tj-actions/branch-names@v5.1
-    
-      - name: Setup JFrog CLI
-        uses: jfrog/setup-jfrog-cli@v4
-        env:
-          # JFrog platform url (for example: https://acme.jfrog.io)
-          JF_URL: ${{ secrets.JF_URL }}
+    - name: Setup JFrog CLI
+      uses: jfrog/setup-jfrog-cli@v4
+      env:
+        JF_ENV_1: ${{ secrets.JF_ACCESS_TOKEN }}
+        
+    - name: Ping Artifactory
+      run: jf rt ping
 
-          # JFrog Platform access token
-          JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
+    - name: Set Environment Variables
+      run: |
+        echo "::set-env name=repository::$(echo ${GITHUB_REF#refs/heads/} | sed 's/\//_/g')"
+        echo $repository
 
-          # Basic authentication credentials
-          ## JF_USER: ${{ secrets.JF_USER }}
-          ## JF_PASSWORD: ${{ secrets.JF_PASSWORD }}
+    - if: always()   
+      name: Feature Branch Repository Update
+      run: |
+        echo "::set-env name=repository::$(echo ${GITHUB_REF#refs/heads/} | sed 's/\//_/g')"
+        jf mvnc --repo-resolve-releases=dev-webgoat-libs-release --repo-resolve-snapshots=dev-webgoat-libs-snapshot --repo-deploy-releases=dev-webgoat-libs-release --repo-deploy-snapshots=dev-webgoat-libs-snapshot
+     
+    - if: always()
+      name: Build & Deploy
+      run: | 
+        cd maths && jf mvn clean install
+        
+    - if: always() 
+      name: Publish Build Information
+      run: |
+        # Collect environment variables for the build
+        jf rt bce
+        # Collect VCS details from git and add them to the build
+        jf rt bag
+        # Publish build info
+        jf rt bp       
+        
+    - if: always()
+      name: Xray Scan
+      run: |
+        jf bs
 
-      - name: Setup JDK 1.8
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: 8
+    - if: always()
+      name: Feature Branch Repository Deletion
+      env:
+        NUMBER_OF_DAYS_TO_KEEP: 90
+      run: |
+        # Extract all the LOCAL repositories created automatically by the CI process
+        jf rt curl -XGET /api/repositories | jq '[.[] | .key | select(test("auto-cli-local"))]' > deletion/auto_created_repositories.json && cat deletion/auto_created_repositories.json
 
-      #- name: Cache Maven packages
-      #  id: cache
-      #  uses: actions/cache@v2
-      #  with:
-      #    path: ~/.m2
-      #    key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
-      #    restore-keys: ${{ runner.os }}-m2
+        # Calculate for which month are we going back to verify who should be deleted
+        jq -n 'now - 3600 * 24 * '$NUMBER_OF_DAYS_TO_KEEP' | gmtime | todate' > deletion/months_indicator && cat deletion/months_indicator
 
-      - name: Setup settings.xml
-        uses: s4u/maven-settings-action@v2.4.1
-        with:
-          repositories: | 
-            [
-              {"id":"snapshots","name":"dev-webgoat-libs-snapshot","url":"https://jfrogmikeho.jfrog.io/artifactory/dev-webgoat-libs-snapshot","username": "mikeho@jfrog.com", "password": "${{ secrets.JF_ACCESS_TOKEN }}","snapshots":{"enabled":true}},
-              {"id":"central","name":"dev-webgoat-libs-snapshot","url":"https://jfrogmikeho.jfrog.io/artifactory/dev-webgoat-libs-snapshot","username": "mikeho@jfrog.com", "password": "${{ secrets.JF_ACCESS_TOKEN }}","snapshots":{"enabled":false}}
-            ]
-            
-      - name: Build with Maven
-        run: jf mvn clean install deploy -B "-DcustomVersion=${{ steps.branch-name.outputs.current_branch }}-${{ github.run_number }}"
-
-      - name: Run JFrog CLI
-        run: |
-          # Ping the server
-          jf rt ping
-          # Collect environment variables for the build
-          jf rt bce
-          # Collect VCS details from git and add them to the build
-          jf rt bag
-          # Xray Scan
-          # jf bs
-          # Publish build info
-          jf rt bp
+        # Iterate over all the repositories, delete those by the latest file that was modified
+        jq -c '.[]' deletion/auto_created_repositories.json | while read i; do
+          echo Iterating repository = $i
+          sh -c "jf rt s --spec deletion/repositories-spec.json --spec-vars='key1="$i"' > deletion/search_results && cat deletion/search_results"
+          
+          # If the repository is empty / latest modified file is older > NUMBER_OF_DAYS_TO_KEEP days => DELETE the repository
+          if [[ $(cat deletion/search_results) == "[]" ]]; then
+             echo "Deleting repository: $i, repository is empty"
+             sh -c "jf rt rdel $i --quiet && jf rt rdel ${i//local/virtual} --quiet && jf rt rdel ${i//local/jcenter} --quiet"
+          elif [[ $(cat deletion/search_results | jq --arg month_indicator $(cat deletion/months_indicator) '.[] | .modified | . <= $month_indicator') = "true" ]]; then             
+             echo "Deleting repository: $i, too old to keep in Artifactory"
+             sh -c "jf rt rdel $i --quiet && jf rt rdel ${i//local/virtual} --quiet && jf rt rdel ${i//local/jcenter} --quiet"
+          else
+             echo "Skipping Repository deletion - repository is still relevant"
+          fi
+        done        
