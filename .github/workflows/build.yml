@@ -32,20 +32,18 @@ jobs:
     - name: Setup JFrog CLI
       uses: jfrog/setup-jfrog-cli@v4
       env:
-        JF_ENV_1: ${{ secrets.JF_ACCESS_TOKEN }}
+        # JFrog platform url (for example: https://acme.jfrog.io)
+        JF_URL: ${{ secrets.JF_URL }}
+
+        # JFrog Platform access token
+        JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
         
     - name: Ping Artifactory
       run: jf rt ping
 
-    - name: Set Environment Variables
-      run: |
-        echo "::set-env name=repository::$(echo ${GITHUB_REF#refs/heads/} | sed 's/\//_/g')"
-        echo $repository
-
     - if: always()   
       name: Feature Branch Repository Update
       run: |
-        echo "::set-env name=repository::$(echo ${GITHUB_REF#refs/heads/} | sed 's/\//_/g')"
         jf mvnc --repo-resolve-releases=dev-webgoat-libs-release --repo-resolve-snapshots=dev-webgoat-libs-snapshot --repo-deploy-releases=dev-webgoat-libs-release --repo-deploy-snapshots=dev-webgoat-libs-snapshot
      
     - if: always()
