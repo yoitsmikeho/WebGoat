@@ -7,6 +7,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Get branch name
+        id: branch-name
+        uses: tj-actions/branch-names@v5.1
+    
       - name: Setup JFrog CLI
         uses: jfrog/setup-jfrog-cli@v4
         env:
@@ -26,16 +31,25 @@ jobs:
           distribution: 'temurin'
           java-version: 8
 
-      - name: Cache Maven packages
-        id: cache
-        uses: actions/cache@v2
-        with:
-          path: ~/.m2
-          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
-          restore-keys: ${{ runner.os }}-m2
+      #- name: Cache Maven packages
+      #  id: cache
+      #  uses: actions/cache@v2
+      #  with:
+      #    path: ~/.m2
+      #    key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+      #    restore-keys: ${{ runner.os }}-m2
 
-      - name: Build & Deploy
-        run: jf mvn clean install
+      - name: Setup settings.xml
+        uses: s4u/maven-settings-action@v2.4.1
+        with:
+          repositories: | 
+            [
+              {"id":"snapshots","name":"dev-webgoat-libs-snapshot","url":"https://jfrogmikeho.jfrog.io/artifactory/dev-webgoat-libs-snapshot","username": "mikeho@jfrog.com", "password": "${{ secrets.JF_ACCESS_TOKEN }}","snapshots":{"enabled":true}},
+              {"id":"central","name":"dev-webgoat-libs-snapshot","url":"https://jfrogmikeho.jfrog.io/artifactory/dev-webgoat-libs-snapshot","username": "mikeho@jfrog.com", "password": "${{ secrets.JF_ACCESS_TOKEN }}","snapshots":{"enabled":false}}
+            ]
+            
+      - name: Build with Maven
+        run: jf mvn clean install deploy -B "-DcustomVersion=${{ steps.branch-name.outputs.current_branch }}-${{ github.run_number }}"
 
       - name: Run JFrog CLI
         run: |
