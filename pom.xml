@@ -107,6 +107,19 @@
     <url>https://github.com/WebGoat/WebGoat/issues</url>
   </issueManagement>
 
+  <distributionManagement>
+    <repository>
+      <id>central</id>
+      <name>a0bbh9h3ufgsy-artifactory-primary-0-releases</name>
+      <url>https://jfrogmikeho.jfrog.io/artifactory/dev-webgoat-libs-release</url>
+    </repository>
+    <snapshotRepository>
+      <id>snapshots</id>
+      <name>a0bbh9h3ufgsy-artifactory-primary-0-snapshots</name>
+      <url>https://jfrogmikeho.jfrog.io/artifactory/dev-webgoat-libs-snapshot</url>
+    </snapshotRepository>
+  </distributionManagement>
+    
   <properties>
     <!-- Shared properties with plugins and version numbers across submodules-->
     <asciidoctorj.version>2.5.10</asciidoctorj.version>
