@@ -27,7 +27,7 @@ jobs:
       uses: actions/setup-java@v4
       with:
         distribution: 'temurin'
-        java-version: 17
+        java-version: 8
 
     - name: Setup JFrog CLI
       uses: jfrog/setup-jfrog-cli@v4
@@ -49,7 +49,7 @@ jobs:
     - if: always()
       name: Build & Deploy
       run: | 
-        jf mvn -s .m2/settings.xml clean install -DJF_ACCESS_TOKEN=${{ secrets.JF_ACCESS_TOKEN }}
+        jf mvn -s .m2/settings.xml clean install -D JF_ACCESS_TOKEN=${{secrets.JF_ACCESS_TOKEN}}
         
     - if: always() 
       name: Publish Build Information
