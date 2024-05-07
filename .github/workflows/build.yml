@@ -41,10 +41,10 @@ jobs:
     - name: Ping Artifactory
       run: jf rt ping
 
-    - if: always()   
-      name: Feature Branch Repository Update
-      run: |
-        jf mvnc --repo-resolve-releases=dev-webgoat-libs-release --repo-resolve-snapshots=dev-webgoat-libs-snapshot --repo-deploy-releases=dev-webgoat-libs-release --repo-deploy-snapshots=dev-webgoat-libs-snapshot
+    #- if: always()   
+    #  name: Feature Branch Repository Update
+    #  run: |
+    #    jf mvnc --repo-resolve-releases=dev-webgoat-libs-release --repo-resolve-snapshots=dev-webgoat-libs-snapshot --repo-deploy-releases=dev-webgoat-libs-release --repo-deploy-snapshots=dev-webgoat-libs-snapshot
      
     - if: always()
       name: Build & Deploy
