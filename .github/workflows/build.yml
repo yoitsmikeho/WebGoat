@@ -57,7 +57,7 @@ jobs:
     - if: always()
       name: Build & Deploy
       run: | 
-        jf mvn -s .m2/settings.xml clean install -D JF_ACCESS_TOKEN=${{secrets.JF_ACCESS_TOKEN}}
+        jf mvn -s .m2/settings.xml clean install 
         
     - if: always() 
       name: Publish Build Information
