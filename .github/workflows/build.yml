@@ -27,7 +27,15 @@ jobs:
       uses: actions/setup-java@v4
       with:
         distribution: 'temurin'
-        java-version: 8
+        java-version: 21
+
+    - name: Setup Maven Action
+      uses: s4u/setup-maven-action@v1.7.0
+      with:
+        checkout-fetch-depth: 0
+        java-version: 21
+        java-distribution: temurin
+        maven-version: 3.9.6
 
     - name: Setup JFrog CLI
       uses: jfrog/setup-jfrog-cli@v4
