@@ -1,5 +1,5 @@
 
-name: calculate-ci-job
+name: Build WebGoat with Maven
 on:  
   push:
     branches-ignore: [ master ]
