@@ -35,18 +35,11 @@ jobs:
         distribution: 'temurin'
         java-version: 21
 
-    #- name: Setup Maven Action
-    #  uses: s4u/setup-maven-action@v1.12.0
-    #  with:
-    #    checkout-fetch-depth: 0
-    #    java-version: 21
-    #    java-distribution: temurin
-    #    maven-version: 3.9.6
     - uses: s4u/maven-settings-action@v2.3.0
       with:
         servers: |
           [{
-              "id": ${{ vars.JF_URL }},
+              "id": "${{ vars.JF_URL }}",
               "username": "${{ steps.setup-cli.outputs.oidc-user }}",
               "password": "${{ steps.setup-cli.outputs.oidc-token }}"
           }]
