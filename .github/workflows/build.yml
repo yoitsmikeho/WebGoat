@@ -35,6 +35,16 @@ jobs:
         distribution: 'temurin'
         java-version: 21
 
+    - name: Setup JFrog CLI
+      uses: jfrog/setup-jfrog-cli@v4
+      id: setup-cli
+      env:
+        # JFrog platform url (for example: https://acme.jfrog.io)
+        JF_URL: https://${{ vars.JF_URL }}/
+        JF_PROJECT: ${{ vars.JF_PROJECT }}
+      with:
+        oidc-provider-name: mikeho-github
+
     - uses: s4u/maven-settings-action@v2.3.0
       with:
         servers: |
@@ -43,15 +53,6 @@ jobs:
               "username": "${{ steps.setup-cli.outputs.oidc-user }}",
               "password": "${{ steps.setup-cli.outputs.oidc-token }}"
           }]
-
-    - name: Setup JFrog CLI
-      uses: jfrog/setup-jfrog-cli@v4
-      env:
-        # JFrog platform url (for example: https://acme.jfrog.io)
-        JF_URL: https://${{ vars.JF_URL }}/
-        JF_PROJECT: ${{ vars.JF_PROJECT }}
-      with:
-        oidc-provider-name: mikeho-github
         
     - name: Ping Artifactory
       run: jf rt ping
