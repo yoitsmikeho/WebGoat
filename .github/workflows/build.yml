@@ -13,6 +13,7 @@ permissions:
   id-token: write # for creating OIDC tokens for signing.
   packages: write # for uploading attestations.
   contents: read
+  security-events: write
 
 jobs: 
   build-jdk8:
@@ -44,6 +45,7 @@ jobs:
         JF_PROJECT: ${{ vars.JF_PROJECT }}
       with:
         oidc-provider-name: mikeho-github
+        version: latest
 
     - uses: s4u/maven-settings-action@v2.3.0
       with:
