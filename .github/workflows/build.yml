@@ -88,7 +88,8 @@ jobs:
     - if: always()
       name: Xray Build Scan
       run: |
-        jf build-scan   
+        jf build-scan 
+        jf audit
 
     - name: Run JFrog SAST
       run: |
