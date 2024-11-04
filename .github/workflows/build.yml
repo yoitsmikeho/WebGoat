@@ -47,7 +47,7 @@ jobs:
         oidc-provider-name: mikeho-github
         version: latest
 
-    - uses: s4u/maven-settings-action@v2.3.0
+    - uses: s4u/maven-settings-action@v3.1.0
       with:
         servers: |
           [{
